@@ -1,0 +1,19 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: RX-2
+  title: "The file manager on Workers"
+spec:
+  goal: apps/web is Cloudflare's R2 Explorer template — R2-Explorer's app on the Worker over the bucket R2 binding, its dashboard in Static Assets under the product's name — read-only until both BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD are stored, the wrangler config rendered per environment, with /api/health listing the bucket
+  affects:
+    - apps/web/**
+    - tests/web/**
+    - tooling/wire/worker-secrets.mjs
+    - pnpm-lock.yaml
+  doneWhen:
+    - pnpm typecheck, lint, test and build are green
+    - the committed wrangler.jsonc is its fixture render
+    - a dry-run deploy binds env.bucket and env.ASSETS
+    - wrangler dev serves the explorer read-only, and with both keys asks for the sign-in and accepts a file
+  gates:
+    - checks

@@ -1,0 +1,17 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: RX-4
+  title: "Ready to instantiate"
+spec:
+  goal: A reader can run, test, preview, sign in to and deploy the explorer from a fresh clone, and the as-built status records every departure from upstream
+  affects:
+    - README.md
+    - apps/web/README.md
+    - specs/epics/r2-explorer/**
+    - specs/epics/README.md
+    - tasks/RX-4.TaskContract.yaml
+  doneWhen:
+    - the README's quick start works from a fresh clone, read-only and signed in
+    - IMPLEMENTATION-STATUS lists every PR and departure
+  gates: []
