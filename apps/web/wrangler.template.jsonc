@@ -1,0 +1,35 @@
+// The source of wrangler.jsonc, which tooling/wire renders from it: from
+// wiring.fixture.json for local work (`pnpm run wire:fixture`, committed as
+// that render), and on every Orun lane from the wiring document the
+// `cloudflare-r2` Terraform root lease-publishes (WIRING_CLOUDFLARE_R2_<ENV>)
+// — dev, which no root applies to, from the fixture (component.yaml's
+// buildCommand). Edit this file, never wrangler.jsonc. The workers-assets
+// composition deploys one environment per job with no wrangler `--env`, so
+// `__ENV__` names the environment this is rendered for.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "r2-explorer-web",
+  // R2-Explorer, configured from the Worker's secrets (src/config.ts). wrangler
+  // bundles it; there is no build of its own.
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // The dashboard: the package's prebuilt single-page app, copied here by the
+  // build (scripts/build-dashboard.mjs). Upstream's asset settings, unchanged:
+  // a path without a file is the app's, and the Worker answers /api/*.
+  "assets": {
+    "directory": "dist/dashboard",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  // The bucket the explorer manages. Its binding name is what the dashboard
+  // shows as the bucket's name, as upstream's is.
+  "r2_buckets": [
+    {
+      "binding": "bucket",
+      "bucket_name": "@@wiring(cloudflare-r2/__ENV__:r2_bucket_name)@@"
+    }
+  ]
+}

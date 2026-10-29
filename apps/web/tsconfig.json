@@ -1,0 +1,11 @@
+{
+  "extends": "../../tooling/tsconfig/worker.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "cloudflare-env.d.ts"]
+}
