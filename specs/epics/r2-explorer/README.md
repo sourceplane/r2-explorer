@@ -8,7 +8,7 @@ The port keeps the package, its dashboard, its API and its read-only default unc
 
 | Field | Value |
 |-------|-------|
-| Status | In progress — RX0 (the spec) |
+| Status | In progress — RX0–RX3 shipped ([#1](https://github.com/sourceplane/r2-explorer/pull/1)–[#4](https://github.com/sourceplane/r2-explorer/pull/4)); RX4 — a baseline — next |
 | Cluster | **RX** (RX0–RX4) |
 | Owner(s) | `apps/web` (`src/index.ts`, `src/config.ts`, `src/health.ts`, the dashboard's build, the wrangler template) · `tests/web` · `infra/terraform/cloudflare-r2` |
 | Builds on | `blob-starter` (the Cirrus R2 root `cloudflare-r2`, its wiring render and its one-landing bootstrap); `ai-artifacts` (optional Orun secrets handed to the Worker as Worker secrets) |
