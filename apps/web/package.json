@@ -1,0 +1,26 @@
+{
+  "name": "@app/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-dashboard.mjs",
+    "dev": "node scripts/build-dashboard.mjs && wrangler dev",
+    "preview": "node scripts/build-dashboard.mjs && wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "wire:fixture": "node ../../tooling/wire/render.mjs --template wrangler.template.jsonc --out wrangler.jsonc --map wiring.fixture.json --env stage"
+  },
+  "dependencies": {
+    "hono": "4.13.8",
+    "r2-explorer": "1.1.10"
+  },
+  "devDependencies": {
+    "@app/eslint-config": "workspace:*",
+    "@app/tsconfig": "workspace:*",
+    "@cloudflare/workers-types": "^4.20250508.0",
+    "eslint": "^9.27.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.151.0"
+  }
+}

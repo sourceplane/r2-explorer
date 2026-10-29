@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `pnpm dev` / `pnpm preview` (never committed).
+# Both keys are OPTIONAL. Without them the explorer is read-only and asks for
+# no sign-in, as upstream ships it; with BOTH set, every /api/* route asks for
+# HTTP Basic authentication and the signed-in user may upload, move, rename
+# and delete. On a deployed environment they are the Orun secrets of the same
+# names, pushed to the Worker as Worker secrets on deploy.
+BASIC_AUTH_USERNAME=
+BASIC_AUTH_PASSWORD=

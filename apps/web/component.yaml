@@ -1,0 +1,120 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: web
+  description: The file manager — R2-Explorer on Cloudflare Workers + Static Assets, over the R2 bucket, per environment
+spec:
+  type: cloudflare-workers-assets-turbo
+  lifecycle: production
+  owner: platform
+  # Its pages, attached to it in the workspace's catalog: what the Docs
+  # library shows for it, and what the catalog's docs and runbook checks read.
+  # Generated from what this manifest and its sources declare.
+  docs:
+    overview: docs/overview.md
+    pages:
+      - { path: docs/architecture.md, role: architecture, title: Architecture }
+      - { path: docs/runbook.md, role: runbook, title: Runbook }
+  # `app`, not `web`: a domain and a component share one name space in the
+  # catalog, and a domain called `web` hid this component from it.
+  domain: app
+  path: apps/web
+  # Its own lane per environment, so each environment's deploy waits on its
+  # own bucket and nothing else.
+  lane: isolated
+  # INFRA BEFORE APP. The Worker binds the R2 bucket by name, and the name is
+  # rendered into its config during the build from the wiring document the
+  # cloudflare-r2 root lease-publishes after its apply. A job resolves its
+  # secrets when it STARTS, so on a merge to main this deploy waits for that
+  # environment's apply (enforced) and the document is there; a pull request
+  # deploys nothing, so nothing on one waits (advisory).
+  dependsOn:
+    - component: cloudflare-r2
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+  secretEnv:
+    WIRING_CLOUDFLARE_R2_STAGE: "secret://r2-explorer/r2-explorer/stage/WIRING_CLOUDFLARE_R2"
+    WIRING_CLOUDFLARE_R2_PROD: "secret://r2-explorer/r2-explorer/prod/WIRING_CLOUDFLARE_R2"
+  # The explorer's sign-in, stored per environment as the product's secrets
+  # BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD (README → "Signing in"). The
+  # Worker reads them at request time, so the build hands them to the Worker
+  # as Worker SECRETS and no bundle contains them (buildCommand below).
+  # BEST-EFFORT, wire-now-seed-later: a key nobody has stored yet is skipped
+  # when the job resolves its secrets (no env var, no failure), and the
+  # explorer without both serves the bucket READ-ONLY, as upstream ships it —
+  # so a fresh product deploys and serves before its owner has chosen a
+  # password at all.
+  optionalSecretEnv:
+    BASIC_AUTH_USERNAME: "secret://r2-explorer/r2-explorer/{{ .environment }}/BASIC_AUTH_USERNAME"
+    BASIC_AUTH_PASSWORD: "secret://r2-explorer/r2-explorer/{{ .environment }}/BASIC_AUTH_PASSWORD"
+  subscribe:
+    environments:
+      - name: dev
+        profile: verify
+      - name: stage
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+      - name: prod
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+
+    workspaceDir: ../..
+    appDir: .
+
+    turboFilter: "@app/web"
+    wranglerConfig: wrangler.jsonc
+
+    # The Worker's entry is its source: `wrangler deploy` bundles it (with
+    # R2-Explorer) in the same command that uploads the dashboard, bound as
+    # ASSETS. The build only copies the dashboard into place.
+    workerEntrypoint: src/index.ts
+    assetsDir: dist/dashboard
+
+    # Per-env worker name: r2-explorer-web-{dev,stage,prod}.
+    workerName: r2-explorer-web
+    environmentAwareWorkerName: true
+
+    # The account's workers.dev subdomain; exported to the smoke step as
+    # ${WORKERS_DEV_SUBDOMAIN} and used to build ${DEPLOYED_URL}.
+    workersDevSubdomain: your-workers-subdomain
+
+    installCommand: pnpm install --frozen-lockfile
+    # Render this environment's wrangler config, then build. stage and prod
+    # render from the wiring document their cloudflare-r2 apply published
+    # (secretEnv above, resolved before the job's first step); dev, which no
+    # root applies to and which only verifies, renders from the committed
+    # fixture. The committed wrangler.jsonc (the fixture render) is what the
+    # composition's verify-app-structure step finds before this runs. The
+    # sign-in never reaches the build (`env -u`); then, when the environment
+    # has it, it goes to the Worker as SECRETS (tooling/wire/worker-secrets.mjs:
+    # `wrangler secret bulk`, the values over stdin) before the composition
+    # deploys it. Only the deploy lane holds a Cloudflare credential, so a
+    # verify lane builds the same and pushes nothing.
+    buildCommand: node ../../tooling/wire/live.mjs --template wrangler.template.jsonc --out wrangler.jsonc --components cloudflare-r2 --env "${ORUN_ENVIRONMENT}" --fixture wiring.fixture.json --fixture-envs dev && env -u BASIC_AUTH_USERNAME -u BASIC_AUTH_PASSWORD pnpm exec turbo run build --filter=@app/web && node ../../tooling/wire/worker-secrets.mjs --secret BASIC_AUTH_USERNAME --secret BASIC_AUTH_PASSWORD --worker "r2-explorer-web-${ORUN_ENVIRONMENT}" --config wrangler.jsonc
+
+    # Smoke, read-only: /api/health — answered by the Worker itself, ahead of
+    # the explorer and whatever its sign-in — lists one key of the bucket
+    # through its binding and answers `"ok":true` (an unbound or unreachable
+    # bucket is a 503). Then the dashboard's page is served from Static
+    # Assets (`id=q-app`, the app's mount point). Not the site's name: that is
+    # the owner's to change, and HTML-escaped when it carries an `&` or `'`.
+    # Nothing is written. Responses are buffered before grep so an early match
+    # cannot SIGPIPE curl.
+    smokeCommand: "health=$(curl -sf \"${DEPLOYED_URL}/api/health\") && echo \"${health}\" | grep -q '\"ok\":true' && html=$(curl -sfL \"${DEPLOYED_URL}/\") && echo \"${html}\" | grep -q 'id=q-app'"
+  labels:
+    team: platform
+    layer: delivery
+    surface: web
+    runtime: cloudflare
