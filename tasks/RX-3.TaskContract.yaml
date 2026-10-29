@@ -1,0 +1,14 @@
+apiVersion: orun.io/v1
+kind: TaskContract
+metadata:
+  name: RX-3
+  title: "The R2 bucket from Terraform"
+spec:
+  goal: infra/terraform/cloudflare-r2 provisions one private bucket per deployed environment and publishes the wiring document the explorer's config renders from
+  affects:
+    - infra/terraform/cloudflare-r2/**
+  doneWhen:
+    - terraform validate passes
+    - the root publishes WIRING_CLOUDFLARE_R2 with r2_bucket_name, the key the template's token names
+  gates:
+    - checks

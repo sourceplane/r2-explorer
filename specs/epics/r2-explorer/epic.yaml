@@ -1,0 +1,40 @@
+# The epic's declaration. metadata.name equals the directory name; metadata.key
+# is the task-key prefix this epic reserves (RX → RX-1, RX-2, …). Owner, target
+# date and health are the platform's — never written here.
+apiVersion: orun.io/v1
+kind: Epic
+metadata:
+  name: r2-explorer
+  key: RX
+spec:
+  title: "Cloudflare's R2 Explorer template on Cloudflare Workers with R2"
+  summary: "Cloudflare's R2 Explorer template — R2-Explorer, a Google Drive-style interface over an R2 bucket: folders, drag-and-drop and multipart uploads, in-browser previews and editing, metadata — runs per environment on Cloudflare Workers + Static Assets with the bucket provisioned by Terraform through Orun, inside the Cirrus baseline's repository conventions. The package and its prebuilt dashboard stay upstream's; what moves is where its configuration comes from (read-only with no sign-in stored, as upstream ships it; HTTP Basic authentication and changes allowed once its owner stores BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD, pushed to the Worker as Worker secrets) and where the bucket comes from (rendered per environment from the R2 root's wiring document) — and the repository is an Orun baseline that instantiates the whole product in one landing."
+  state: started
+  milestones:
+    - name: "RX0 — the spec"
+      exitCriteria:
+        - "the doc set and the task contracts are on main, with the repository's intent, CI and tooling"
+      tasks: [RX-1]
+    - name: "RX1 — the file manager on Workers"
+      exitCriteria:
+        - "apps/web is the upstream template: R2-Explorer's app on the Worker over the `bucket` R2 binding, its dashboard copied into Static Assets with the product's name as its title, and /api/health listing the bucket"
+        - "read-only with no sign-in stored; with both BASIC_AUTH_USERNAME and BASIC_AUTH_PASSWORD, HTTP Basic authentication on every /api route and changes allowed"
+        - "the wrangler config renders per environment from the cloudflare-r2 root's wiring document (fixture in verify, live in deploy)"
+        - "`pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` are green"
+      tasks: [RX-2]
+    - name: "RX2 — the R2 bucket from Terraform"
+      exitCriteria:
+        - "infra/terraform/cloudflare-r2 provisions the stage and prod buckets and publishes the wiring document the app renders from"
+      tasks: [RX-3]
+    - name: "RX3 — ready to instantiate"
+      exitCriteria:
+        - "the README says how to run, test, preview and deploy it, and how its owner signs in"
+        - "the as-built status records every departure from the upstream template"
+      tasks: [RX-4]
+    - name: "RX4 — a baseline"
+      exitCriteria:
+        - "blueprint.yaml (the console card, requires [github, cloudflare]) and repo-blueprint.yaml (the build) take a new product from nothing to live on stage and prod in ONE landing, then record it (01-product, 02-docs)"
+        - "the product's own push-to-main plan applies cloudflare-r2 before it deploys web, enforced on main and advisory on a pull request"
+        - "a product built from it carries the product only, renamed throughout to its own name, repository, Worker and bucket names — and still installs and imports the r2-explorer package, whose name is this baseline's slug"
+        - "Baseline CI is green: contract tests, the blueprint read by the pinned orun, the leak gate, the offline bootstrap and the product's plans, and the end-to-end tier — which serves the built Worker over a local bucket, read-only and then signed in"
+      tasks: [RX-5]
