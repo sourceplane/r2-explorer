@@ -8,7 +8,7 @@ The port keeps the package, its dashboard, its API and its read-only default unc
 
 | Field | Value |
 |-------|-------|
-| Status | In progress — RX0–RX3 shipped ([#1](https://github.com/sourceplane/r2-explorer/pull/1)–[#4](https://github.com/sourceplane/r2-explorer/pull/4)); RX4 — a baseline — next |
+| Status | ✅ RX0–RX4 shipped ([#1](https://github.com/sourceplane/r2-explorer/pull/1)–[#5](https://github.com/sourceplane/r2-explorer/pull/5); RX4 tagged `baseline-v1`). A Terraform apply and a live deploy are proven only by a live bootstrap (risk RX-G) |
 | Cluster | **RX** (RX0–RX4) |
 | Owner(s) | `apps/web` (`src/index.ts`, `src/config.ts`, `src/health.ts`, the dashboard's build, the wrangler template) · `tests/web` · `infra/terraform/cloudflare-r2` |
 | Builds on | `blob-starter` (the Cirrus R2 root `cloudflare-r2`, its wiring render and its one-landing bootstrap); `ai-artifacts` (optional Orun secrets handed to the Worker as Worker secrets) |
@@ -16,6 +16,7 @@ The port keeps the package, its dashboard, its API and its read-only default unc
 | Changes | The configuration from the Worker's secrets (read-only, or Basic auth with changes); Cloudflare Access and Email Routing left out; the dashboard copied into `dist/dashboard`, its title the product's; `/api/health`; the wrangler config rendered per environment; tests, the R2 root, the deploy contract |
 | Decisions locked | (1) R2-Explorer stays upstream's package, pinned exactly, its dashboard copied not rebuilt (design §2). (2) Read-only until BOTH sign-in keys are stored (design §3). (3) The sign-in is two optional Orun secrets, pushed to the Worker as Worker secrets; the build never sees them (design §3). (4) No Cloudflare Access, no Email Routing (design §6). (5) The bucket before the Worker on main: cloudflare-r2 → web, enforced; advisory on pull requests. |
 | Gate | RX2 applies only with a linked workspace (a Cloudflare connection with R2 enabled); verified by `terraform validate` and, from RX4, the offline end-to-end tier. |
+| Shipped as | `baseline-v1` ([#5](https://github.com/sourceplane/r2-explorer/pull/5)); proven offline (Baseline CI: the built Worker served under `wrangler dev` over a local bucket, driven read-only and then signed in), deploy gated until a workspace is linked |
 
 ## Read order
 

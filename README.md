@@ -6,20 +6,73 @@ Drive-style interface over an R2 bucket: folders, drag-and-drop and
 multipart uploads, in-browser previews of images, PDFs, text, Markdown and
 CSV, in-place editing, metadata — running on **Cloudflare Workers + Static
 Assets**, with the bucket provisioned by Terraform through
-[Orun](https://github.com/sourceplane/orun) — and, at its last milestone
-(RX4), packaged as an **Orun baseline**: one command taking a new product
-from nothing to live on stage and prod, in its own repository, under its own
-name, in ONE landing.
+[Orun](https://github.com/sourceplane/orun), and packaged as an **Orun
+baseline**: one command takes a new product from nothing to live on stage
+and prod, in its own repository, under its own name — in ONE landing.
 
 The explorer and its dashboard are upstream's, unchanged: the Worker mounts
 R2-Explorer's app, and the build copies its prebuilt dashboard into the
 Worker's Static Assets, its `<title>` set to the product's name. It ships
 **read-only**, as upstream does, until its owner stores a sign-in; then it
-asks for HTTP Basic authentication and allows changes. See
+asks for HTTP Basic authentication and allows changes. What the baseline adds
+is everything needed to make a copy of it somebody else's, built the way
+[cirrus-baseline](https://github.com/sourceplane/cirrus-baseline) is since
+its one-landing bootstrap. See
 [`specs/epics/r2-explorer`](specs/epics/r2-explorer/README.md) for the
 design, the milestones and the as-built status.
 
-## What is here
+## Instantiating a product
+
+```bash
+git clone --depth 1 --branch <baseline-tag> https://github.com/sourceplane/r2-explorer
+cd r2-explorer
+orun new --blueprint repo-blueprint.yaml --out ~/sites/acme-files --run-hooks --resume \
+  --set reponame=acme-files --set productname="Acme Files" \
+  --set githuborg=acme-inc --set subdomain=<workers-dev-subdomain>
+```
+
+Or, once the platform's registry lists it, from the Orun console (Baselines →
+`r2-explorer` → Build). Two phases: **`01-product`** creates the
+repository and lands the whole product as ONE pull request — intent, CI,
+tooling, the R2 root, the explorer and its tests — and one convergence
+applies the R2 bucket on stage and prod and then deploys the explorer bound
+to it; **`02-docs`** records the live deployment from probed facts.
+**[BOOTSTRAP.md](BOOTSTRAP.md)** is the operator guide;
+[docs/phases/](docs/phases/README.md) has a page per phase.
+
+The only connection a build needs is Cloudflare (with R2 enabled on the
+account). The explorer works from the first deploy, read-only: the Worker
+reaches its bucket through its R2 binding, so there is no storage key to
+paste. Its sign-in — `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`, two
+optional Orun secrets the deploy pushes to the Worker as Worker secrets — is
+the owner's to set after the build.
+
+The new repository receives the **product only** — the app, its R2 root, its
+tests, its CI, its tooling, a README of its own and its operating contract —
+renamed throughout to the product's name, repository, Cloudflare Worker and
+bucket names. None of this repository's machinery ships.
+
+**The slug is also the upstream package's name.** R2-Explorer is the npm
+package [`r2-explorer`](https://www.npmjs.com/package/r2-explorer), so the
+rename engine renames this baseline's slug everywhere EXCEPT where the tree
+names the package — the pinned dependency, the one import, the package's
+directory the build copies from — and Cloudflare's template it was ported
+from (`tooling/rebrand/rebrand.mjs`, `UPSTREAM`; held by
+`testing/rebrand.test.sh` and `testing/placement.test.sh`).
+
+| What makes it a baseline | Where |
+|---|---|
+| The console card (inputs, secrets, programme) | `blueprint.yaml` |
+| The build document (modules, phases, hooks) | `repo-blueprint.yaml` |
+| This tree's identity, and the bootstrap's task contracts | `.baseline/` |
+| The rename engine | `tooling/rebrand/rebrand.mjs` |
+| The bootstrap's helpers (deferrals, redeploy marker, work-tree strip) | `tooling/bootstrap/` |
+| The deployment-record renderer | `hooks/render-deployment-docs.sh` |
+| The product's README and context pack | `.baseline/product/README.md`, `ai/context/` |
+| The baseline's tests: contract, wiring, leak, offline bootstrap, end to end | `testing/`, `.github/workflows/baseline.yml` |
+| Cutting a `baseline-vN` tag | `.github/workflows/tag.yml` |
+
+## What is here (the product)
 
 | Surface | Where |
 |---|---|
@@ -47,25 +100,6 @@ pnpm build              # the dashboard → apps/web/dist/dashboard
 pnpm --filter @app/web dev        # wrangler dev: the explorer on http://localhost:8787, a local R2 bucket
 cp apps/web/.dev.vars.example apps/web/.dev.vars   # set both keys to sign in and allow changes
 ```
-
-## Signing in
-
-The explorer is **read-only until you set a sign-in**, as upstream ships it:
-anyone with the URL can browse the bucket and download what is in it, and
-no one can change it. Store `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD`
-for an environment — Orun secrets, `orun secrets set <KEY> --env <env>` —
-and redeploy it: the deploy pushes both to the Worker as Worker secrets, and
-from then on every `/api` route asks for HTTP Basic authentication and the
-signed-in user may upload, move, rename and delete. One of the two alone
-leaves it read-only. Locally, the same two keys go in `apps/web/.dev.vars`.
-
-## Deploying
-
-A merge to `main` applies the R2 bucket on stage and prod and then deploys
-`r2-explorer-web-{stage,prod}` bound to it, once `intent.yaml` names the
-product's Orun workspace (it names the placeholder `ws_CHANGE_ME` until it
-is linked, and CI plans nothing). By hand: Run workflow on `main` (`ci.yml`)
-with the environment, and optionally the components, to deploy.
 
 ## How it maps to Cloudflare's template
 
@@ -103,9 +137,11 @@ if the two disagree.
 
 ## CI
 
-| Workflow | What it runs |
-|---|---|
-| `ci.yml` | the Orun pipeline: `orun plan --changed`, then one job per lane. A pull request runs the verify lanes (the R2 root planned for stage and prod, the dashboard built and the Worker dry-deployed per environment, the tests run); a merge applies the R2 bucket, then deploys stage → prod. It plans nothing while `intent.yaml` names the placeholder workspace `ws_CHANGE_ME`, as this repository does. A manual run (Run workflow on `main`) plans the environment and components it names under the push-to-main trigger, so they deploy as a merge deploys them |
+| Workflow | What it runs | Ships to a product |
+|---|---|---|
+| `ci.yml` | the Orun pipeline, and the only workflow a product carries: `orun plan --changed`, then one job per lane. A pull request runs the verify lanes (the R2 root planned for stage and prod, the dashboard built and the Worker dry-deployed per environment, the tests run), except the bootstrap's own landings (`orun/BASE-*`), where `plan` alone runs and nothing waits for it (the landing checked its commit in the box); a merge applies the R2 bucket, then deploys stage → prod. It plans nothing while `intent.yaml` names the placeholder workspace `ws_CHANGE_ME`, as this repository does. A manual run (Orunbase's Deploy button, or Run workflow on `main`) plans the environment and components it names under the push-to-main trigger, so they deploy as a merge deploys them | yes |
+| `baseline.yml` | the baseline's own tiers: contract tests, the wiring path, the blueprint read by the pinned orun, the leak gate, the offline bootstrap with the product's own plan, the landing installed, type-checked, linted, tested and built, the product built in the job tree, dry-deployed and served — read-only, then signed in | no |
+| `tag.yml` | cuts a `baseline-vN` tag (manual) | no |
 
 ## Credits
 

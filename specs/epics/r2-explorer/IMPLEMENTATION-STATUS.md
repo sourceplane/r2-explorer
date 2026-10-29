@@ -11,7 +11,7 @@ at `7ae5750`, MIT).
 | RX1 — the file manager on Workers | ✅ Shipped | [#2](https://github.com/sourceplane/r2-explorer/pull/2) (RX-2) |
 | RX2 — the R2 bucket from Terraform | ✅ Shipped (validated; apply gated on a linked workspace) | [#3](https://github.com/sourceplane/r2-explorer/pull/3) (RX-3) |
 | RX3 — ready to instantiate | ✅ Shipped | [#4](https://github.com/sourceplane/r2-explorer/pull/4) (RX-4) |
-| RX4 — a baseline | Planned | — |
+| RX4 — a baseline | ✅ Shipped (offline-proven; no live bootstrap yet, risk RX-G) | [#5](https://github.com/sourceplane/r2-explorer/pull/5) (RX-5), tagged `baseline-v1` |
 
 ## Departures from the upstream template
 
@@ -117,3 +117,55 @@ name rendered into the binding from `WIRING_CLOUDFLARE_R2_<ENV>`;
 - `terraform validate` green on `infra/terraform/cloudflare-r2`.
 - Not verified: a Terraform apply and a live deploy — both need the product
   linked to an Orun workspace with a Cloudflare connection (risk RX-G).
+
+## RX4 — a baseline (RX-5)
+
+The repository is an Orun baseline on the Cirrus conventions, held to the
+starter standard and built the way turso-starter builds a product: ONE
+landing. `blueprint.yaml` is the card (`requires: [github, cloudflare]`;
+the three brokered keys — `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_R2_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID` — as a preview, and the sign-in deliberately not
+among them; the programme `01-product`, `02-docs`; `expectedMinutes` 6, the
+two phase cards' 5 + 1). `repo-blueprint.yaml` places every module in
+`01-product` and lands it as one pull request; `02-docs` records the
+deployment from probed facts (`/api/health`: the bucket answering, and the
+mode) and puts the bootstrap's deferrals back.
+
+- **The rename engine** (`tooling/rebrand/rebrand.mjs`, Cirrus's engine,
+  this tree's rules): the repository slug, `SITE_NAME`, the Worker, the
+  bucket names, the sign-in's secret refs and the Worker the deploy pushes
+  them to, the domain placeholder and the workers.dev subdomain. The slug
+  is also the package's name, so `UPSTREAM` protects every place the tree
+  names the package — the pinned dependency, the import, its
+  `require.resolve` and `node_modules` directory, its npm link — and
+  Cloudflare's template's links (risk RX-F). The epic slug a bootstrap
+  files its task under is `files-baselining`, which does not contain the
+  repository slug.
+- **The edge.** `web` on `cloudflare-r2` — `mode: enforced` on a push to
+  main, advisory on a pull request.
+- **The component docs** are generated (`tooling/catalog/gen-component-docs.py`)
+  and checked in Baseline CI.
+
+### Verified (RX4)
+
+- Contract tests: manifest, phases, coverage, rebrand, retouch,
+  bootstrap-defer, wire; the component docs match their manifests; `orun
+  catalog validate` reports no errors.
+- The blueprint read by the bootstrap floor (`orun new --status`); the leak
+  gate (69 files derived, nothing local, built or provenance-shaped); the
+  offline bootstrap with the blueprint's own hooks, then the product's own
+  plan for the 01-product merge — cloudflare-r2 → web on stage and prod,
+  enforced; advisory on a pull request — and a `--resume` that changes
+  nothing; the placed product still naming the `r2-explorer` package.
+- The end-to-end tier: the product installed, type-checked, linted, tested
+  and built; the stage web lane's own steps in the job tree orun stages,
+  with random markers planted as the sign-in in the build's environment and
+  found in nothing it wrote; its dry deploy binding the stage bucket and
+  the assets (the Worker 104 KiB gzipped); the Worker secrets step naming
+  both keys for `<repo>-web-stage`; the built Worker served by `wrangler
+  dev` over a local bucket — the component's own smoke, the dashboard under
+  the product's name, read-only with every write refused; then signed in,
+  every `/api` route `401` without the sign-in or with a wrong one, and a
+  file uploaded, listed, read back byte for byte, a folder made, both
+  deleted.
+- Not verified: everything risk RX-G names.
