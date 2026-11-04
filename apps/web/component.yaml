@@ -66,6 +66,27 @@ spec:
           - profile: deploy
             when:
               triggerRef: github-push-main
+  # How the explorer runs itself for orun.work's live Preview tab
+  # (saas-parallel-baselining PB4): `orun preview` starts this, and a coding
+  # session keeps it running while it works, so the person watches it change
+  # as it is built. The dev server binds the box's loopback only, on a fixed
+  # port, and installs first, so a checkout the session has not installed yet
+  # still comes up.
+  # As the app's own dev script does, it copies the dashboard (the r2-explorer
+  # package's prebuilt single-page app) into dist/dashboard, then wrangler dev
+  # serves it and the explorer's API from the Worker, over a local R2 bucket
+  # (empty at first). With no sign-in secrets in a preview the explorer is
+  # read-only, as upstream ships it. wrangler dev reloads the Worker on every
+  # edit.
+  preview:
+    run:
+      - sh
+      - -c
+      - pnpm install --frozen-lockfile --prefer-offline --filter "@app/web..." && node scripts/build-dashboard.mjs && exec node_modules/.bin/wrangler dev --ip 127.0.0.1 --port 8787 --show-interactive-dev-session=false
+    port: 8787
+    path: /
+    env:
+      WRANGLER_SEND_METRICS: "false"
   parameters:
     nodeVersion: "22"
     pnpmVersion: "10.12.1"
